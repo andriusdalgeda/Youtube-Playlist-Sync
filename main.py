@@ -109,6 +109,9 @@ def main():
                             return False
 
                     uploaded = upload_to_aws(video_convert_mp3 , AWS_Bucket, video_convert_mp3)
+
+                    # removes mp3 version after upload
+                    os.remove(video_convert_mp3)
                 
             file.close()
             # Waits 60 seconds before checking for changes within the playlist
