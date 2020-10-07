@@ -62,7 +62,7 @@ def main():
                     # defines url for the pytube module
                     video = YouTube(video_url)
 
-                    video_title = video.title
+                    video_title = video.title.replace('.', '')
 
                     video_stream = video.streams.first()
 
