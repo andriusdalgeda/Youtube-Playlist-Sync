@@ -75,11 +75,16 @@ def main():
                     # appends id to csv to ensure the video is not downloaded again
                     file.write(video_id + ',')
 
-                    # Confirms that the video was downloaded and displays the time taken
-                    print('Completed download of', video_title + '\n' + 'The download took',time.time()-start,'seconds'+'\n')
+                    # removes certain characters from video title to limit errors - errors with moviepy
+                    blacklisted_chars = ['|', '#']
 
-                    # replaces | to stop error occuring - error with moviepy module
-                    video_convert = video_title.replace('|', '') + '.mp4'
+                    for i in blacklisted_chars:
+                        video_convert = video_title.replace(i, '')+ '.mp4'
+                        
+                    # Confirms that the video was downloaded and displays the time taken
+                    print('Completed download of', video_convert + '\n' + 'The download took',time.time()-start,'seconds')
+
+                    # renames and converts mp4 into mp3 format
                     video_convert_mp3 = video_convert.replace('mp4', 'mp3')
                     video = VideoFileClip(video_convert)
                     video.audio.write_audiofile(video_convert_mp3)
@@ -87,7 +92,8 @@ def main():
 
                     # removes mp4 version
                     os.remove(video_convert)
-                
+                    
+                    # uploads to aws s3 storage 
                     def upload_to_aws(local_file, bucket, s3_file):
 
                         key = AWS_Key
@@ -99,7 +105,7 @@ def main():
 
                         try:
                             s3.upload_file(local_file, bucket, s3_file)
-                            print("Upload Successful")
+                            print("Upload to AWS S3 storage " + '(' + AWS_Bucket + ')' + "\n")
                             return True
                         except FileNotFoundError:
                             print("The file was not found")
