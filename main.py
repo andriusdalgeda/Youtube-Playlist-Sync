@@ -7,12 +7,11 @@ from pytube import YouTube
 from moviepy.editor import *
 
 # create a credentials.py file
-from credentials import Youtube_API_Key, Playlist_ID, AWS_Key, AWS_Secret_Key, AWS_Region, AWS_Bucket
+from credentials import *
 
-# used to authenticate and upload to s3 aws storage
-# pip install boto3
-import logging
-import boto3
+# used to authenticate and upload to mega.nz cloud storage
+# pip install mega
+from mega import Mega
 
 # YoutubeDataAPI authentication
 # pip install --upgrade google-api-python-client
@@ -26,6 +25,11 @@ def main():
     while True:
         # oauth disabled for personal use
         os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
+
+        # Logs into mega.nz and creates a folder if not present
+        mega = Mega()
+        m = mega.login(MegaUsername, MegaPassword)
+        m.create_folder('Music')
 
         with open('video-id.csv','a+') as file:
             
@@ -64,11 +68,7 @@ def main():
 
                     video_title = video.title.replace('.', '')
 
-                    video_stream = video.streams.first()
-
-                    print('Downloading',video_title + '...')
-
-                    start = time.time()
+                    video_stream = video.streams.filter(subtype='mp4').first()
 
                     video_stream.download()
 
@@ -79,46 +79,30 @@ def main():
                     blacklisted_chars = ['|', '#']
 
                     for i in blacklisted_chars:
-                        video_convert = video_title.replace(i, '')+ '.mp4'
-                        
+                        video_title = video_title.replace(i, '')
+
+                    video_convert = video_title+'.mp4'
+
                     # Confirms that the video was downloaded and displays the time taken
-                    print('Completed download of', video_convert + '\n' + 'The download took',time.time()-start,'seconds')
+                    print('Completed download of', video_convert + '\n')
 
                     # renames and converts mp4 into mp3 format
-                    video_convert_mp3 = video_convert.replace('mp4', 'mp3')
+                    video_mp3 = video_convert.replace('.mp4', '.mp3')
                     video = VideoFileClip(video_convert)
-                    video.audio.write_audiofile(video_convert_mp3)
+                    video.audio.write_audiofile(video_mp3)
                     video.close()
 
                     # removes mp4 version
                     os.remove(video_convert)
                     
-                    # uploads to aws s3 storage 
-                    def upload_to_aws(local_file, bucket, s3_file):
-
-                        key = AWS_Key
-                        secret_key = AWS_Secret_Key
-                        region = AWS_Region
-
-                        s3 = boto3.client('s3', aws_access_key_id=key,
-                                        aws_secret_access_key=secret_key)
-
-                        try:
-                            s3.upload_file(local_file, bucket, s3_file)
-                            print("Upload to AWS S3 storage " + '(' + AWS_Bucket + ')' + "\n")
-                            return True
-                        except FileNotFoundError:
-                            print("The file was not found")
-                            return False
-                        except NoCredentialsError:
-                            print("Credentials not available")
-                            return False
-
-                    uploaded = upload_to_aws(video_convert_mp3 , AWS_Bucket, video_convert_mp3)
+                    # upload to mega.nz storage in defined folder
+                    folder = m.find('Music')
+                    m.upload(video_mp3, folder[0])
 
                     # removes mp3 version after upload
-                    os.remove(video_convert_mp3)
-                
+                    os.remove(video_mp3)
+
+            # closes file to ensure appends are saved
             file.close()
             # Waits 60 seconds before checking for changes within the playlist
             time.sleep(60)
